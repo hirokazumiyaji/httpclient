@@ -7,9 +7,16 @@ import okhttp3.RequestBody
 import okhttp3.Response
 import reactor.core.publisher.Mono
 
-class Client(private val http: OkHttpClient) {
+open class Client(private val http: OkHttpClient) {
     fun request(request: Request): Mono<Response> {
         return Mono.just(http.newCall(request).execute())
+            .doOnError {
+                throw HttpException(it)
+            }.doOnSuccess {
+                if (!it.isSuccessful) {
+                    throw HttpException(it)
+                }
+            }
     }
 
     fun get(url: String, headers: Headers? = null): Mono<Response> {
@@ -54,7 +61,7 @@ class Client(private val http: OkHttpClient) {
 
     fun delete(url: String, body: RequestBody? = null, headers: Headers? = null): Mono<Response> {
         var req = Request.Builder()
-            .url("")
+            .url(url)
             .delete(body)
         headers?.let {
             req = req.headers(it)
